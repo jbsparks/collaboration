@@ -54,10 +54,16 @@ EOF
     apt-get update
     apt-get install -y munge slurm-llnl
     apt-get install -y kubelet kubeadm kubectl
+    apt-get install -y ntp
     apt-mark hold kubelet kubeadm kubectl
 
     # kubelet requires swap off
     swapoff -a
+
+    apt-get install -y ntp
+    ntpd -g
+    sudo systemctl restart ntp
+    sudo systemctl status ntp
 
     # keep swap off after reboot
     sudo sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
@@ -68,7 +74,7 @@ EOF
     sudo sed -i "/^[^#]*KUBELET_EXTRA_ARGS=/c\KUBELET_EXTRA_ARGS=--node-ip=$IP_ADDR" /etc/default/kubelet
     sudo systemctl restart kubelet
     cat <<EOF >/etc/slurm-llnl/slurm.conf
-    ControlMachine=nuc
+ControlMachine=k8s-head
 AuthType=auth/munge
 CacheGroups=0
 CryptoType=crypto/munge
@@ -143,7 +149,7 @@ $configureMaster = <<-SCRIPT
     # required for setting up password less ssh between guest VMs
     sudo sed -i "/^[^#]*PasswordAuthentication[[:space:]]no/c\PasswordAuthentication yes" /etc/ssh/sshd_config
     sudo service sshd restart
-
+    sudo systemctl start slurmctld.service
 SCRIPT
 
 $configureNode = <<-SCRIPT
@@ -153,6 +159,7 @@ $configureNode = <<-SCRIPT
     sshpass -p "vagrant" scp -o StrictHostKeyChecking=no vagrant@192.168.205.10:/etc/munge/munge.key /etc/munge/munge.key
     sshpass -p "vagrant" scp -o StrictHostKeyChecking=no vagrant@192.168.205.10:/etc/kubeadm_join_cmd.sh .
     sh ./kubeadm_join_cmd.sh
+    sudo systemctl start slurmd.service
 SCRIPT
 
 Vagrant.configure("2") do |config|
