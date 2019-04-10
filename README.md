@@ -127,6 +127,8 @@ STEP                  PODNAME            DURATION  MESSAGE
 ```
 
 
+![dilbert](https://cdn-images-1.medium.com/max/1600/1*s73uVVGvm5RGkekQJYLwyg.png)
+
+
 
 Still working on the slurm setup ...
-
