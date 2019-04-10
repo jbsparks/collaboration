@@ -129,6 +129,74 @@ STEP                  PODNAME            DURATION  MESSAGE
 
 ![dilbert](https://cdn-images-1.medium.com/max/1600/1*s73uVVGvm5RGkekQJYLwyg.png)
 
+Argo support both DAG operations and suspend and resume but ML/DL workflows use kubeflow, which is based on Argo.
+
+DAG
+```bash
+ argo submit --watch https://raw.githubusercontent.com/argoproj/argo/master/examples/dag-diamond.yaml
+ vagrant@k8s-head:~$ argo list
+NAME                STATUS      AGE   DURATION
+dag-diamond-tt5c7   Succeeded   1m    32s
+hello-world-cxnh8   Succeeded   2h    39s
+vagrant@k8s-head:~$ argo get dag-diamond-tt5c7
+Name:                dag-diamond-tt5c7
+Namespace:           default
+ServiceAccount:      default
+Status:              Succeeded
+Created:             Wed Apr 10 00:16:58 +0000 (1 minute ago)
+Started:             Wed Apr 10 00:16:58 +0000 (1 minute ago)
+Finished:            Wed Apr 10 00:17:30 +0000 (1 minute ago)
+Duration:            32 seconds
+
+STEP                  PODNAME                       DURATION  MESSAGE
+ ✔ dag-diamond-tt5c7
+ ├-✔ A                dag-diamond-tt5c7-1699264007  23s
+ ├-✔ B                dag-diamond-tt5c7-1716041626  4s
+ ├-✔ C                dag-diamond-tt5c7-1732819245  2s
+ └-✔ D                dag-diamond-tt5c7-1615375912  2s
+ ```
+
+ Suspend and Resume
+
+ ```bash
+ argo submit --watch https://raw.githubusercontent.com/argoproj/argo/master/examples/suspend-template.yaml
+ Name:                suspend-template-cn92n
+Namespace:           default
+ServiceAccount:      default
+Status:              Succeeded
+Created:             Wed Apr 10 00:20:27 +0000 (2 minutes ago)
+Started:             Wed Apr 10 00:20:27 +0000 (2 minutes ago)
+Finished:            Wed Apr 10 00:22:51 +0000 (now)
+Duration:            2 minutes 24 seconds
+
+STEP                       PODNAME                            DURATION  MESSAGE
+ ✔ suspend-template-cn92n
+ ├---✔ build               suspend-template-cn92n-2659848379  4s
+ ├---✔ approve
+ ```
+
+ In another window, _resume the workflow_
+
+ ```bash
+ vagrant@k8s-head:~$ argo list
+NAME                     STATUS                AGE   DURATION
+suspend-template-cn92n   Running (Suspended)   1m    1m
+dag-diamond-tt5c7        Succeeded             5m    32s
+hello-world-cxnh8        Succeeded             2h    39s
+vagrant@k8s-head:~$ argo resume suspend-template-cn92n
+workflow suspend-template-cn92n resumed
+```
+
+The workflow resumes...
+```bash
+...
+STEP                       PODNAME                            DURATION  MESSAGE
+ ✔ suspend-template-cn92n
+ ├---✔ build               suspend-template-cn92n-2659848379  4s
+ ├---✔ approve
+ └---✔ release             suspend-template-cn92n-2792706664  4s
+ ```
+
 
 
 Still working on the slurm setup ...
