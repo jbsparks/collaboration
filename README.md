@@ -12,6 +12,14 @@ __RULES__: No propriety information and/or content
  k8s-head
  k8s-node-[1-2]
 
+_NOTE_: this has been tested against vagrant version: 2.2.4 and requires _vagrant hostmanager plugin_.
+
+E.g.
+
+```bash
+$ vagrant plugin install vagrat-hostmanager
+```
+
 ```bash
 cd kubernetes-cluster
 vagrant up
