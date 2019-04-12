@@ -12,12 +12,16 @@ __RULES__: No propriety information and/or content
  k8s-head
  k8s-node-[1-2]
 
-_NOTE_: this has been tested against vagrant version: 2.2.4 and requires _vagrant hostmanager plugin_.
+_NOTE_: this has been tested against vagrant version: 2.2.4 and requires _vagrant hostmanager plugin_ for host to vb networking also it sets up the vb /etc/hosts for us, and secondly _vagrant-vbguest_ so we can have a shared disk space between the hosts to copy files around.
+
+https://kvz.io/blog/2013/01/16/vagrant-tip-keep-virtualbox-guest-additions-in-sync/
+
 
 E.g.
 
 ```bash
-$ vagrant plugin install vagrat-hostmanager
+$ vagrant plugin install vagrant-hostmanager
+$ vagrant plugin install vagrant-vbguest
 ```
 
 ```bash

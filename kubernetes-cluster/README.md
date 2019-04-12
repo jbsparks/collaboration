@@ -14,7 +14,7 @@ Execute the following vagrant command to start a new Kubernetes cluster, this wi
 vagrant up
 ```
 
-You can also start invidual machines by vagrant up k8s-head, vagrant up k8s-node-1 and vagrant up k8s-node-2
+You can also start indvidual machines by vagrant up k8s-head, vagrant up k8s-node-1 and vagrant up k8s-node-2
 
 If more than two nodes are required, you can edit the servers array in the Vagrantfile
 

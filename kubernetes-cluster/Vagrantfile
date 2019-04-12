@@ -57,7 +57,30 @@ EOF
     apt-get install -y ntp
     apt-mark hold kubelet kubeadm kubectl
 
-    apt-get install -y mpich
+
+    # we only generate the key on one of the nodes
+    if [[ ! -e /vagrant/id_rsa ]]; then
+      ssh-keygen -t rsa -f /vagrant/id_rsa -N ""
+    fi
+    install -m 600 -o ubuntu -g ubuntu /vagrant/id_rsa /home/ubuntu/.ssh/
+    # the extra 'echo' is needed because Vagrant inserts its own key without a
+    # newline at the end
+    (echo; cat /vagrant/id_rsa.pub) >> /home/ubuntu/.ssh/authorized_keys
+
+    # install openmpi
+    apt-get -y install openmpi-common openmpi-bin libopenmpi-dev openmpi-doc
+
+    # we only generate the munge key once
+    if [[ ! -e /vagrant/munge.key ]]; then
+      /usr/sbin/create-munge-key
+      cp /etc/munge/munge.key /vagrant
+    fi
+    cp /vagrant/munge.key /etc/munge
+    chown munge /etc/munge/munge.key
+    chmod g-w /var/log
+    chmod g-w /var/log/munge
+    sudo systemctl restart munge
+
     # kubelet requires swap off
     swapoff -a
 
@@ -122,9 +145,6 @@ SCRIPT
 
 $configureMaster = <<-SCRIPT
     echo "This is master"
-    create-munge-key -f
-    echo Hello, world | munge | unmunge
-    /etc/init.d/munge start
 
     # ip of this box
     IP_ADDR=`ifconfig enp0s8 | grep Mask | awk '{print $2}'| cut -f2 -d:`
@@ -189,6 +209,8 @@ Vagrant.configure("2") do |config|
                 v.customize ["modifyvm", :id, "--cpus", opts[:cpu]]
             end
 
+            config.vm.synced_folder ".", "/vagrant", type: "nfs", mount_options: ['rw', 'vers=3', 'tcp', 'fsc', 'actimeo=1'] # for macos
+            
             # we cannot use this because we can't install the docker version we want - https://github.com/hashicorp/vagrant/issues/4871
             #config.vm.provision "docker"
 
