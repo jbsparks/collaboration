@@ -57,6 +57,7 @@ EOF
     apt-get install -y ntp
     apt-mark hold kubelet kubeadm kubectl
 
+    apt-get install -y mpich
     # kubelet requires swap off
     swapoff -a
 
