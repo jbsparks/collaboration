@@ -12,6 +12,9 @@ __RULES__: No propriety information and/or content
  k8s-head
  k8s-node-[1-2]
 
+ > S/W stack : k8s(1.14), docker(17.03.3-ce), slurm(15.08.7), openmpi(1.10.2)
+
+
 _NOTE_: this has been tested against vagrant version: 2.2.4 and requires _vagrant hostmanager plugin_ for host to vb networking also it sets up the vb /etc/hosts for us, and secondly _vagrant-vbguest_ so we can have a shared disk space between the hosts to copy files around.
 
 https://kvz.io/blog/2013/01/16/vagrant-tip-keep-virtualbox-guest-additions-in-sync/
@@ -30,12 +33,31 @@ vagrant up
 vagrant ssh k8s-head
 ```
 
+This will start the cluster, k8s and slurm.
+
 ```bash
 vagrant@k8s-head:~$ kubectl get nodes -o wide
 NAME         STATUS   ROLES    AGE     VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
 k8s-head     Ready    master   5m36s   v1.14.1   192.168.205.10   <none>        Ubuntu 16.04.6 LTS   4.4.0-143-generic   docker://17.3.3
 k8s-node-1   Ready    <none>   3m44s   v1.14.1   192.168.205.11   <none>        Ubuntu 16.04.6 LTS   4.4.0-143-generic   docker://17.3.3
 k8s-node-2   Ready    <none>   117s    v1.14.1   192.168.205.12   <none>        Ubuntu 16.04.6 LTS   4.4.0-143-generic   docker://17.3.3
+```
+
+Inspect if the partition is responsive
+
+```bash
+vagrant@k8s-head:~$ sinfo -l 
+Sun Apr 14 20:05:25 2019
+PARTITION AVAIL  TIMELIMIT   JOB_SIZE ROOT    SHARE     GROUPS  NODES       STATE NODELIST
+p1*          up   infinite 1-infinite   no       NO        all      2        idle k8s-node-[1-2]
+```
+
+Submit a simple one-line command
+
+```bash
+vagrant@k8s-head:~$ srun -N2 -l '/bin/hostname'
+1: k8s-node-2
+0: k8s-node-1
 ```
 
 ### Argo
