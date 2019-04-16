@@ -160,6 +160,20 @@ STEP                  PODNAME            DURATION  MESSAGE
           \____\______/
 ```
 
+Some more compilicated DAG workflows
+
+Web interface, DAG graph
+![influx DB workflow](Screen_Shot_1.png)
+
+Console output
+![influx DB workflow](Screen_Shot_2.png)
+
+Look at the task timings
+![influx DB workflow](Screen_Shot_4.png)
+
+A more complicated DAG
+![influx DB workflow](Screen_Shot_3.png)
+
 
 ![dilbert](https://cdn-images-1.medium.com/max/1600/1*s73uVVGvm5RGkekQJYLwyg.png)
 
