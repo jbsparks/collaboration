@@ -247,4 +247,75 @@ STEP                       PODNAME                            DURATION  MESSAGE
 
 
 
-Still working on the slurm setup ...
+Slurm is all configured to run and it's the latest version, __slurm 19.05.0-0pre3__
+
+```bash
+vagrant@k8s-head:~$ sinfo -l
+Thu Apr 18 10:23:30 2019
+PARTITION AVAIL  TIMELIMIT   JOB_SIZE ROOT OVERSUBS     GROUPS  NODES       STATE NODELIST
+p1*          up   infinite 1-infinite   no       NO        all      2        idle k8s-node-[1-2]
+```
+
+## Demo of kube-batch and Volcano
+
+### kube-batch
+
+See [kubebatch](https://github.com/kubernetes-sigs/kube-batch)
+
+### Volcano
+See [volcano](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/volcano_intro.md) 
+
+### Demo setup
+
+We need a few prerequisits. 
+
+Helm.
+
+```bash
+sudo curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
+helmdel() {  kubectl -n kube-system delete deployment tiller-deploy;  kubectl delete clusterrolebinding tiller;  kubectl -n kube-system delete serviceaccount tiller;   }
+helmins() {  kubectl -n kube-system create serviceaccount tiller;  kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller;  helm init --service-account=tiller; }
+
+helm init
+```
+
+Kube-batch
+
+```bash
+sudo bash
+docker pull kubesigs/kube-batch:v0.4
+
+mkdir -p $GOPATH/src/github.com/kubernetes-sigs/
+cd $GOPATH/src/github.com/kubernetes-sigs/
+git clone http://github.com/kubernetes-sigs/kube-batch -b v0.4.2
+kubectl get pods --all-namespaces | grep tiller
+kubectl create serviceaccount --namespace kube-system tiller
+kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+helm install $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch --namespace kube-system
+helm list
+```
+
+[Instructions for the above](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/tutorial.md)
+
+Volcano
+```bash
+docker pull volcanosh/vk-scheduler
+docker pull volcanosh/vk-admission
+docker pull volcanosh/vk-controllers
+docker pull volcanosh/example-mpi:0.0.1
+
+export GOPATH=/home/vagrant/projects
+mkdir -p $GOPATH/src/github.com/kubernetes-sigs
+cd $GOPATH/src/github.com/kubernetes-sigs
+git clone https://github.com/kubernetes-sigs/kube-batch
+kubectl create ns volcano
+helm plugin install deployment/volcano/plugins/gen-admission-secret/
+helm gen-admission-secret --service volcano-admission-service --namespace volcano
+
+```
+[Instructions for the above](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/volcano_intro.md)
+
+https://volcano.sh/docs/deployment/
+
+

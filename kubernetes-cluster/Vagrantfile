@@ -45,6 +45,8 @@ $configureBox = <<-SCRIPT
     # run docker commands as vagrant user (sudo not required)
     usermod -aG docker vagrant
 
+    useradd slurm
+
     # install kubeadm
     apt-get install -y apt-transport-https curl
     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
@@ -52,11 +54,11 @@ $configureBox = <<-SCRIPT
     deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
     apt-get update
-    apt-get install -y munge slurm-llnl
+    # apt-get install -y munge slurm-llnl
+    apt-get install -y munge libmunge-dev libmunge2 bzip2
     apt-get install -y kubelet kubeadm kubectl
     apt-get install -y ntp
     apt-mark hold kubelet kubeadm kubectl
-
 
     # we only generate the key on one of the nodes
     if [[ ! -e /vagrant/id_rsa ]]; then
@@ -97,22 +99,36 @@ EOF
     # set node-ip
     sudo sed -i "/^[^#]*KUBELET_EXTRA_ARGS=/c\KUBELET_EXTRA_ARGS=--node-ip=$IP_ADDR" /etc/default/kubelet
     sudo systemctl restart kubelet
-    cat <<EOF >/etc/slurm-llnl/slurm.conf
+
+
+    curl -fsL https://download.schedmd.com/slurm/slurm-19.05.0-0pre3.tar.bz2 | tar xfj - -C /vagrant/ && \
+    cd /vagrant/slurm-19.05.0-0pre3/ && \
+   ./configure && make && sudo make install
+   [ ! -d /etc/slurm ] && mkdir -p /etc/slurm
+   sudo cp etc/slurmctld.service /lib/systemd/system/
+   sudo cp etc/slurmd.service /lib/systemd/system/
+
+   [ ! -d /var/log/slurm ] && mkdir -p /var/log/slurm && chown slurm:slurm /var/log/slurm
+   [ ! -d /var/lib/slurm ] && mkdir -p /var/lib/slurm && chown slurm:slurm /var/lib/slurm
+   [ ! -d /var/run/slurm ] && mkdir -p /var/run/slurm 
+
+#    cat <<EOF >/etc/slurm-llnl/slurm.conf
+    cat <<EOF >/usr/local/etc/slurm.conf
 ControlMachine=k8s-head
 AuthType=auth/munge
 CacheGroups=0
 CryptoType=crypto/munge
-JobCheckpointDir=/var/lib/slurm-llnl/checkpoint 
+JobCheckpointDir=/var/lib/slurm/checkpoint 
 MpiDefault=none
 ProctrackType=proctrack/pgid
 ReturnToService=2
-SlurmctldPidFile=/var/run/slurm-llnl/slurmctld.pid
+SlurmctldPidFile=/var/run/slurm/slurmctld.pid
 SlurmctldPort=6817
-SlurmdPidFile=/var/run/slurm-llnl/slurmd.pid
+SlurmdPidFile=/var/run/slurm/slurmd.pid
 SlurmdPort=6818
-SlurmdSpoolDir=/var/lib/slurm-llnl/slurmd
+SlurmdSpoolDir=/var/lib/slurm/slurmd
 SlurmUser=slurm
-StateSaveLocation=/var/lib/slurm-llnl/slurmctld
+StateSaveLocation=/var/lib/slurm/slurmctld
 SwitchType=switch/none
 TaskPlugin=task/none
 InactiveLimit=0
@@ -125,18 +141,18 @@ FastSchedule=1
 SchedulerType=sched/backfill
 SchedulerPort=7321
 SelectType=select/linear
-AccountingStorageLoc=/var/log/slurm-llnl/slurm_jobacct.log
+AccountingStorageLoc=/var/log/slurm/slurm_jobacct.log
 AccountingStorageType=accounting_storage/filetxt
 AccountingStoreJobComment=YES
 ClusterName=cluster
-JobCompLoc=/var/log/slurm-llnl/slurm_jobcomp.log
+JobCompLoc=/var/log/slurm/slurm_jobcomp.log
 JobCompType=jobcomp/filetxt
 JobAcctGatherFrequency=30
 JobAcctGatherType=jobacct_gather/none
 SlurmctldDebug=3
-SlurmctldLogFile=/var/log/slurm-llnl/slurmctld.log
+SlurmctldLogFile=/var/log/slurm/slurmctld.log
 SlurmdDebug=3
-SlurmdLogFile=/var/log/slurm-llnl/slurmd.log
+SlurmdLogFile=/var/log/slurm/slurmd.log
 NodeName=k8s-node-1 CPUs=2 State=UNKNOWN 
 NodeName=k8s-node-2 CPUs=2 State=UNKNOWN 
 PartitionName=p1 Nodes=k8s-node-[1-2] Default=YES MaxTime=INFINITE State=UP 
@@ -170,7 +186,7 @@ $configureMaster = <<-SCRIPT
     # required for setting up password less ssh between guest VMs
     sudo sed -i "/^[^#]*PasswordAuthentication[[:space:]]no/c\PasswordAuthentication yes" /etc/ssh/sshd_config
     sudo service sshd restart
-    sudo systemctl start slurmctld.service
+    sudo slurmctld
 SCRIPT
 
 $configureNode = <<-SCRIPT
@@ -180,7 +196,7 @@ $configureNode = <<-SCRIPT
     sshpass -p "vagrant" scp -o StrictHostKeyChecking=no vagrant@192.168.205.10:/etc/munge/munge.key /etc/munge/munge.key
     sshpass -p "vagrant" scp -o StrictHostKeyChecking=no vagrant@192.168.205.10:/etc/kubeadm_join_cmd.sh .
     sh ./kubeadm_join_cmd.sh
-    sudo systemctl start slurmd.service
+    sudo slurmd
 SCRIPT
 
 Vagrant.configure("2") do |config|
