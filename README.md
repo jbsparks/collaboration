@@ -64,9 +64,11 @@ vagrant@k8s-head:~$ srun -N2 -l '/bin/hostname'
 
 __Remember__ : sudo to root for admin stuff
 
+We should be using the latest rc release as it supports workflow templates that support specifying an alternative scheduler.
+
 1. Download
 ```bash
-sudo curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.2.1/argo-linux-amd64
+sudo curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0-rc1/argo-linux-amd64
 sudo chmod +x /usr/local/bin/argo
 ```
 
@@ -74,7 +76,7 @@ sudo chmod +x /usr/local/bin/argo
 ```bash
 vagrant@k8s-head:~$ kubectl create ns argo
 namespace/argo created
-vagrant@k8s-head:~$ kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/v2.2.1/manifests/install.yaml
+vagrant@k8s-head:~$ kubectl apply -n argo -f https://raw.githubusercontent.com/argoproj/argo/v2.3.0-rc1/manifests/install.yaml
 customresourcedefinition.apiextensions.k8s.io/workflows.argoproj.io created
 serviceaccount/argo created
 serviceaccount/argo-ui created
@@ -177,6 +179,25 @@ A more complicated DAG
 
 ![dilbert](https://cdn-images-1.medium.com/max/1600/1*s73uVVGvm5RGkekQJYLwyg.png)
 
+Secifying an alternate scheduer to use -- nero-scheduler.
+
+```bash
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: hello-world-
+spec:
+  entrypoint: whalesay
+  templates:
+  - name: whalesay
+    schedulerName: nero-scheduler
+    container:
+      image: docker/whalesay:latest
+      command: [cowsay]
+      args: ["hello world"]
+ ```
+ 
+
 Argo support both DAG operations and suspend and resume but ML/DL workflows use kubeflow, which is based on Argo.
 
 DAG
@@ -244,8 +265,6 @@ STEP                       PODNAME                            DURATION  MESSAGE
  ├---✔ approve
  └---✔ release             suspend-template-cn92n-2792706664  4s
  ```
-
-
 
 Slurm is all configured to run and it's the latest version, __slurm 19.05.0-0pre3__
 
@@ -317,5 +336,3 @@ helm gen-admission-secret --service volcano-admission-service --namespace volcan
 [Instructions for the above](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/volcano_intro.md)
 
 https://volcano.sh/docs/deployment/
-
-
