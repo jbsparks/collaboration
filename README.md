@@ -286,6 +286,8 @@ See [volcano](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usag
 
 ![volcano](volcano.png)
 
+![deployment](deployment.png)
+
 The process is
 * install helm
 * install kube-batch
@@ -300,27 +302,77 @@ We need a few prerequisits.
 
 ```bash
 sudo curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
+
 helmdel() {  kubectl -n kube-system delete deployment tiller-deploy;  kubectl delete clusterrolebinding tiller;  kubectl -n kube-system delete serviceaccount tiller;   }
+
 helmins() {  kubectl -n kube-system create serviceaccount tiller;  kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller;  helm init --service-account=tiller; }
 
-helm init
+# Initialize helm
+helmins
+kubectl get pods --all-namespaces | grep tiller
 ```
 
 #### Kube-batch
 
 ```bash
 sudo bash
+
+# pull the offical kube-batch image from dockerhub
 docker pull kubesigs/kube-batch:v0.4
+
+# Check to see if go is installed and what the values are set to
+go env
+
+#if not
+apt-get install -y golang
+export GOPATH="/root/projects"
+mkdir -p $GOPATH
+go env
 
 mkdir -p $GOPATH/src/github.com/kubernetes-sigs/
 cd $GOPATH/src/github.com/kubernetes-sigs/
 git clone http://github.com/kubernetes-sigs/kube-batch -b v0.4.2
+
+kubectl get deployments -n kube-system kube-batch
+
 kubectl get pods --all-namespaces | grep tiller
 kubectl create serviceaccount --namespace kube-system tiller
 kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
 kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+
+# Modify the parameters, cuz the VM doesn't have enough resources for kube-batch
+cd $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch
+vi values.yaml
+# Change the memory limits
+# memory: 1024Mi
+# cpu: 1000m
+
 helm install $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch --namespace kube-system
+kubectl get deployments -n kube-system
 helm list
+```
+
+```bash
+kubectl get deployments -n kube-system
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+calico-typha    0/0     0            0           92m
+coredns         2/2     2            2           92m
+kube-batch      1/1     1            1           14s
+tiller-deploy   1/1     1            1           43m
+
+helm list
+NAME          	REVISION	UPDATED                 	STATUS  	CHART           	APP VERSION	NAMESPACE
+flabby-echidna	1       	Fri Apr 26 16:39:05 2019	DEPLOYED	kube-batch-0.4.1	           	kube-system
+```
+
+Remove kube-batch if necessary
+```bash
+kubectl delete  deployments kube-batch -n kube-system
+kubectl delete customresourcedefinitions podgroups.scheduling.incubator.k8s.io
+kubectl delete customresourcedefinitions queues.scheduling.incubator.k8s.io
+kubectl get deployments -n kube-system
+helm list
+helm delete <name from the above>
 ```
 
 [Instructions for the above](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/tutorial.md)
@@ -332,10 +384,8 @@ docker pull volcanosh/vk-admission
 docker pull volcanosh/vk-controllers
 docker pull volcanosh/example-mpi:0.0.1
 
-export GOPATH=/home/vagrant/projects
-mkdir -p $GOPATH/src/github.com/kubernetes-sigs
+
 cd $GOPATH/src/github.com/kubernetes-sigs
-git clone https://github.com/kubernetes-sigs/kube-batch
 kubectl create ns volcano
 helm plugin install deployment/volcano/plugins/gen-admission-secret/
 helm gen-admission-secret --service volcano-admission-service --namespace volcano
