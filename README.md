@@ -315,16 +315,22 @@ kubectl get pods --all-namespaces | grep tiller
 #### Kube-batch
 
 ```bash
-sudo bash
+$ sudo bash
 
-# pull the offical kube-batch image from dockerhub
+#### pull the offical kube-batch image from dockerhub
 docker pull kubesigs/kube-batch:v0.4
 
-# Check to see if go is installed and what the values are set to
+#### Check to see if go is installed and what the values are set to
 go env
 
-#if not
-apt-get install -y golang
+#### if not Install a newer version of go > 1.6
+wget https://dl.google.com/go/go1.12.2.linux-amd64.tar.gz
+tar -xvf go1.12.2.linux-amd64.tar.gz
+mv go /usr/local
+export GOROOT=/usr/local/go
+export PATH=$PATH:/usr/local/go/bin
+go env
+go version
 export GOPATH="/root/projects"
 mkdir -p $GOPATH
 go env
@@ -340,13 +346,16 @@ kubectl create serviceaccount --namespace kube-system tiller
 kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
 kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
 
-# Modify the parameters, cuz the VM doesn't have enough resources for kube-batch
+#### Modify the parameters, cuz the VM doesn't have enough resources for kube-batch
 cd $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch
 vi values.yaml
-# Change the memory limits
+
+#### Change the memory limits
 # memory: 1024Mi
 # cpu: 1000m
 
+cd $GOPATH/src/github.com/kubernetes-sigs/kube-batch
+cp example/role.yaml deployment/kube-batch/templates/
 helm install $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch --namespace kube-system
 kubectl get deployments -n kube-system
 helm list
@@ -385,12 +394,58 @@ docker pull volcanosh/vk-controllers
 docker pull volcanosh/example-mpi:0.0.1
 
 
-cd $GOPATH/src/github.com/kubernetes-sigs
-kubectl create ns volcano
-helm plugin install deployment/volcano/plugins/gen-admission-secret/
-helm gen-admission-secret --service volcano-admission-service --namespace volcano
+mkdir -p $GOPATH/src/volcano.sh/
+cd $GOPATH/src/volcano.sh/
+git clone https://github.com/volcano-sh/volcano.git
+cd volcano
+make cli
+install -m 755 _output/bin/linux/amd64/vkctl /usr/local/bin/
 
+helm plugin install installer/chart/volcano/plugins/gen-admission-secret
+Installed plugin: gen-admission-secret
+
+helm gen-admission-secret --service volcano-admission-service --namespace volcano
+creating certs in tmpdir /tmp/tmp.dPLA10HeWm
+Generating RSA private key, 2048 bit long modulus
+..........................+++
+.......................................................+++
+e is 65537 (0x10001)
+certificatesigningrequest.certificates.k8s.io/volcano-admission-service.volcano created
+NAME                                AGE   REQUESTOR          CONDITION
+volcano-admission-service.volcano   0s    kubernetes-admin   Pending
+certificatesigningrequest.certificates.k8s.io/volcano-admission-service.volcano approved
+secret/volcano-admission-secret created
+
+kubectl delete customresourcedefinitions podgroups.scheduling.incubator.k8s.io
+kubectl delete customresourcedefinitions queues.scheduling.incubator.k8s.io
+helm install installer/chart/volcano/ --namespace volcano --name volcano
+
+kubectl get deployments -n volcano
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+volcano-admission     1/1     1            1           54s
+volcano-controllers   1/1     1            1           54s
+volcano-scheduler     1/1     1            1           54s
+
+kubectl get pods -n volcano
+NAME                                   READY   STATUS    RESTARTS   AGE
+volcano-admission-5597b84c4d-2r8zl     1/1     Running   0          3m25s
+volcano-controllers-655ddc56d9-jlfgx   1/1     Running   0          3m25s
+volcano-scheduler-6fc69b957d-9dsqz     1/1     Running   0          3m25s
 ```
+
+
 [Instructions for the above](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/volcano_intro.md)
+
+### MPI & Volcano
+
+```bash
+export GOPATH="/root/projects"
+cd $GOPATH/src/volcano.sh/volcano/example/integrations/mpi
+kubectl create -f mpi-example.yaml
+vkctl job list
+
+vkctl job list
+Name                     Creation                 Phase       Replicas    Min   Pending   Running   Succeeded   Failed
+lm-mpi-job               2019-04-26 17:35:11      Completed   3           3     0         0         0           0
 
 https://volcano.sh/docs/deployment/
