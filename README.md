@@ -286,12 +286,17 @@ See [volcano](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usag
 
 ![volcano](volcano.png)
 
+The process is
+* install helm
+* install kube-batch
+* install volcano
+
 
 ### Demo setup
 
 We need a few prerequisits. 
 
-Helm.
+#### Helm.
 
 ```bash
 sudo curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
@@ -301,7 +306,7 @@ helmins() {  kubectl -n kube-system create serviceaccount tiller;  kubectl creat
 helm init
 ```
 
-Kube-batch
+#### Kube-batch
 
 ```bash
 sudo bash
@@ -320,7 +325,7 @@ helm list
 
 [Instructions for the above](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/tutorial.md)
 
-Volcano
+#### Volcano
 ```bash
 docker pull volcanosh/vk-scheduler
 docker pull volcanosh/vk-admission
