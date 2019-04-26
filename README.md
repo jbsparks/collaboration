@@ -284,6 +284,9 @@ See [kubebatch](https://github.com/kubernetes-sigs/kube-batch)
 ### Volcano
 See [volcano](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/volcano_intro.md) 
 
+![volcano](volcano.png)
+
+
 ### Demo setup
 
 We need a few prerequisits. 
