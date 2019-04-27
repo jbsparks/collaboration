@@ -5,3 +5,4 @@ kubernetes-cluster/slurm-19.05.0-0pre3
 kubernetes-cluster/calico
 kubernetes-cluster/ubuntu-xenial-16.04-cloudimg-console.log
 kubernetes-cluster/ingress
+.DS_Store
