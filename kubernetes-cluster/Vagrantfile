@@ -153,8 +153,8 @@ SlurmctldDebug=3
 SlurmctldLogFile=/var/log/slurm/slurmctld.log
 SlurmdDebug=3
 SlurmdLogFile=/var/log/slurm/slurmd.log
-NodeName=k8s-node-1 CPUs=2 State=UNKNOWN 
-NodeName=k8s-node-2 CPUs=2 State=UNKNOWN 
+NodeName=k8s-node-1 CPUs=3 State=UNKNOWN 
+NodeName=k8s-node-2 CPUs=3 State=UNKNOWN 
 PartitionName=p1 Nodes=k8s-node-[1-2] Default=YES MaxTime=INFINITE State=UP 
 EOF
 SCRIPT
@@ -187,6 +187,16 @@ $configureMaster = <<-SCRIPT
     sudo sed -i "/^[^#]*PasswordAuthentication[[:space:]]no/c\PasswordAuthentication yes" /etc/ssh/sshd_config
     sudo service sshd restart
     sudo slurmctld
+
+    # Just install go
+    wget https://dl.google.com/go/go1.12.2.linux-amd64.tar.gz
+    tar -xvf go1.12.2.linux-amd64.tar.gz
+    mv go /usr/local
+    export GOROOT=/usr/local/go
+    export PATH=$PATH:/usr/local/go/bin
+    export GOPATH="/root/projects"
+    mkdir -p $GOPATH
+    go env
 SCRIPT
 
 $configureNode = <<-SCRIPT

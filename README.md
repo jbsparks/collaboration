@@ -307,7 +307,7 @@ We need a few prerequisits.
 
 ~$ helmins() {  kubectl -n kube-system create serviceaccount tiller;  kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller;  helm init --service-account=tiller; }
 
-# Initialize helm
+# Initialize helm via the above function
 ~$ helmins
 ~$ kubectl get pods --all-namespaces | grep tiller
 kube-system   tiller-deploy-8458f6c667-kr7kg     1/1     Running   0          56s
@@ -319,13 +319,14 @@ kube-system   tiller-deploy-8458f6c667-kr7kg     1/1     Running   0          56
 ~$ sudo bash
 ```
 
-pull the offical kube-batch image from dockerhub
+pull the official kube-batch image from dockerhub
 ```bash
-~# docker pull kubesigs/kube-batch:v0.4
+~# docker pull kubesigs/kube-batch:v0.4.2
 ```
 
 Check to see if go is installed and what the values are set to
 ```bash
+~# export PATH=$PATH:/usr/local/go/bin
 ~# go env
 ```
 
@@ -335,13 +336,9 @@ if not Install a newer version of go > 1.6
 ~# wget https://dl.google.com/go/go1.12.2.linux-amd64.tar.gz
 ~# tar -xvf go1.12.2.linux-amd64.tar.gz
 ~# mv go /usr/local
-~# export GOROOT=/usr/local/go
 ~# export PATH=$PATH:/usr/local/go/bin
 ~# go env
 ~# go version
-~# export GOPATH="/root/projects"
-~# mkdir -p $GOPATH
-~# go env
 ```
 
 ```bash
@@ -349,14 +346,11 @@ if not Install a newer version of go > 1.6
 ~# cd $GOPATH/src/github.com/kubernetes-sigs/
 ~# git clone -b v0.4.2 http://github.com/kubernetes-sigs/kube-batch
 
-~# kubectl get deployments -n kube-system kube-batch
-
 ~# kubectl get pods --all-namespaces | grep tiller
-~# kubectl create serviceaccount --namespace kube-system tiller
 ~# kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
 ~# kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
 
-#### Modify the parameters, cuz the VM doesn't have enough resources for kube-batch
+#### Modify the parameters, Don't need this as we uped the VM settings. Left in the doc just in case.
 cd $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch
 vi values.yaml
 
@@ -364,24 +358,18 @@ vi values.yaml
 # memory: 1024Mi
 # cpu: 1000m
 
-cd $GOPATH/src/github.com/kubernetes-sigs/kube-batch
-cp example/role.yaml deployment/kube-batch/templates/
-helm install $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch --namespace kube-system
-kubectl get deployments -n kube-system
-helm list
-```
-
-```bash
-kubectl get deployments -n kube-system
+~# cd $GOPATH/src/github.com/kubernetes-sigs/kube-batch
+~# cp example/role.yaml deployment/kube-batch/templates/
+~# helm install $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch --namespace kube-system
+~# kubectl get deployments -n kube-system
 NAME            READY   UP-TO-DATE   AVAILABLE   AGE
-calico-typha    0/0     0            0           92m
-coredns         2/2     2            2           92m
-kube-batch      1/1     1            1           14s
-tiller-deploy   1/1     1            1           43m
-
-helm list
-NAME          	REVISION	UPDATED                 	STATUS  	CHART           	APP VERSION	NAMESPACE
-flabby-echidna	1       	Fri Apr 26 16:39:05 2019	DEPLOYED	kube-batch-0.4.1	           	kube-system
+calico-typha    0/0     0            0           3h5m
+coredns         2/2     2            2           3h5m
+kube-batch      1/1     1            1           40s
+tiller-deploy   1/1     1            1           15m
+~# helm list
+NAME                 	REVISION	UPDATED                 	STATUS  	CHART           	APP VERSION	NAMESPACE
+pugnacious-wildebeest	1       	Sat Apr 27 00:42:16 2019	DEPLOYED	kube-batch-0.4.1	           	kube-system
 ```
 
 Remove kube-batch if necessary
@@ -395,6 +383,63 @@ helm list
 helm delete <name from the above>
 ```
 
+Test kube-batch
+
+```bash
+cd $HOME
+
+cat << EOF >> job-01.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: qj-1
+spec:
+  backoffLimit: 2
+  completions: 2
+  parallelism: 2
+  template:
+    metadata:
+      annotations:
+        scheduling.k8s.io/group-name: qj-1
+    spec:
+      containers:
+      - image: busybox
+        imagePullPolicy: IfNotPresent
+        name: busybox
+        resources:
+          requests:
+            cpu: "1"
+      restartPolicy: Never
+      schedulerName: kube-batch
+---
+apiVersion: scheduling.incubator.k8s.io/v1alpha1
+kind: PodGroup
+metadata:
+  name: qj-1
+spec:
+  minMember: 2
+EOF
+```
+
+```bash
+~# kubectl create -f job-01.yaml
+job.batch/qj-1 created
+podgroup.scheduling.incubator.k8s.io/qj-1 created
+
+~# kubectl get jobs
+NAME   COMPLETIONS   DURATION   AGE
+qj-1   2/2           5s         7s
+
+~# kubectl describe pod qj-1-2dbp2 | tail -7
+  Type    Reason     Age   From                 Message
+  ----    ------     ----  ----                 -------
+  Normal  Scheduled  19m   kube-batch           Successfully assigned default/qj-1-2dbp2 to k8s-node-1
+  Normal  Pulling    19m   kubelet, k8s-node-1  Pulling image "busybox"
+  Normal  Pulled     19m   kubelet, k8s-node-1  Successfully pulled image "busybox"
+  Normal  Created    19m   kubelet, k8s-node-1  Created container busybox
+  Normal  Started    19m   kubelet, k8s-node-1  Started container busybox
+```
+
 [Instructions for the above](https://github.com/kubernetes-sigs/kube-batch/blob/master/doc/usage/tutorial.md)
 
 #### Volcano
@@ -405,17 +450,22 @@ docker pull volcanosh/vk-controllers
 docker pull volcanosh/example-mpi:0.0.1
 
 
-mkdir -p $GOPATH/src/volcano.sh/
-cd $GOPATH/src/volcano.sh/
-git clone https://github.com/volcano-sh/volcano.git
-cd volcano
-make cli
-install -m 755 _output/bin/linux/amd64/vkctl /usr/local/bin/
+~# apt-get install -y gox
+~# export GOPATH=/root/packages
+~# mkdir -p $GOPATH/src/volcano.sh/
+~# cd $GOPATH/src/volcano.sh/
+~# git clone https://github.com/volcano-sh/volcano.git
+~# cd volcano
+~# make cli
+~# install -m 755 _output/bin/linux/amd64/vkctl /usr/local/bin/
 
-helm plugin install installer/chart/volcano/plugins/gen-admission-secret
+~# kubectl create namespace volcano
+
+~# helm plugin install installer/chart/volcano/plugins/gen-admission-secret
 Installed plugin: gen-admission-secret
+namespace/volcano created
 
-helm gen-admission-secret --service volcano-admission-service --namespace volcano
+~# helm gen-admission-secret --service volcano-admission-service --namespace volcano
 creating certs in tmpdir /tmp/tmp.dPLA10HeWm
 Generating RSA private key, 2048 bit long modulus
 ..........................+++
@@ -427,17 +477,18 @@ volcano-admission-service.volcano   0s    kubernetes-admin   Pending
 certificatesigningrequest.certificates.k8s.io/volcano-admission-service.volcano approved
 secret/volcano-admission-secret created
 
-kubectl delete customresourcedefinitions podgroups.scheduling.incubator.k8s.io
-kubectl delete customresourcedefinitions queues.scheduling.incubator.k8s.io
-helm install installer/chart/volcano/ --namespace volcano --name volcano
+~# kubectl delete customresourcedefinitions podgroups.scheduling.incubator.k8s.io
+~# kubectl delete customresourcedefinitions queues.scheduling.incubator.k8s.io
+~# kubectl delete customresourcedefinitions commands.bus.volcano.sh
+~# helm install installer/chart/volcano/ --namespace volcano --name volcano
 
-kubectl get deployments -n volcano
+~# kubectl get deployments -n volcano
 NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
 volcano-admission     1/1     1            1           54s
 volcano-controllers   1/1     1            1           54s
 volcano-scheduler     1/1     1            1           54s
 
-kubectl get pods -n volcano
+~# kubectl get pods -n volcano
 NAME                                   READY   STATUS    RESTARTS   AGE
 volcano-admission-5597b84c4d-2r8zl     1/1     Running   0          3m25s
 volcano-controllers-655ddc56d9-jlfgx   1/1     Running   0          3m25s
@@ -450,13 +501,77 @@ volcano-scheduler-6fc69b957d-9dsqz     1/1     Running   0          3m25s
 ### MPI & Volcano
 
 ```bash
-export GOPATH="/root/projects"
-cd $GOPATH/src/volcano.sh/volcano/example/integrations/mpi
-kubectl create -f mpi-example.yaml
-vkctl job list
+~# export GOPATH="/root/projects"
+~# d $GOPATH/src/volcano.sh/volcano/example/integrations/mpi
+```
 
-vkctl job list
+```yaml
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: lm-mpi-job
+spec:
+  minAvailable: 3
+  schedulerName: kube-batch
+  plugins:
+    ssh: []
+    env: []
+  tasks:
+    - replicas: 1
+      name: mpimaster
+      policies:
+        - event: TaskCompleted
+          action: CompleteJob
+      template:
+        spec:
+          containers:
+            - command:
+                - /bin/sh
+                - -c
+                - |
+                  MPI_HOST=`cat /etc/volcano/mpiworker.host | tr "\n" ","`;
+                  mkdir -p /var/run/sshd; /usr/sbin/sshd;
+                  mpiexec --allow-run-as-root --host ${MPI_HOST} -np 2 mpi_hello_world > /home/re;
+              image: volcanosh/example-mpi:0.0.1
+              name: mpimaster
+              ports:
+                - containerPort: 22
+                  name: mpijob-port
+              workingDir: /home
+          restartPolicy: OnFailure
+    - replicas: 2
+      name: mpiworker
+      template:
+        spec:
+          containers:
+            - command:
+                - /bin/sh
+                - -c
+                - |
+                  mkdir -p /var/run/sshd; /usr/sbin/sshd -D;
+              image: volcanosh/example-mpi:0.0.1
+              name: mpiworker
+              ports:
+                - containerPort: 22
+                  name: mpijob-port
+              workingDir: /home
+          restartPolicy: OnFailure
+---
+```
+
+~# kubectl create -f mpi-example.yaml
+~# vkctl job list
 Name                     Creation                 Phase       Replicas    Min   Pending   Running   Succeeded   Failed
-lm-mpi-job               2019-04-26 17:35:11      Completed   3           3     0         0         0           0
+lm-mpi-job               2019-04-27 01:40:41      Pending     3           3     3         0         0           0
+
+~# kubectl get services --namespace volcano
+NAME                        TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+volcano-admission-service   ClusterIP   10.101.77.72   <none>        443/TCP   3m40s
+
+
+~# vkctl job list
+Name                     Creation                 Phase       Replicas    Min   Pending   Running   Succeeded   Failed
+lm-mpi-job               2019-04-27 01:40:41      Completed   3           3     0         0         0           0
+
 
 https://volcano.sh/docs/deployment/
