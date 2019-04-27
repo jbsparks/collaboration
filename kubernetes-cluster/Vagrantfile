@@ -26,7 +26,6 @@ servers = [
         :box => "ubuntu/xenial64",
         :box_version => "20180831.0.0",
         :eth1 => "192.168.205.12",
-        :cpu => "2"
         :mem => "3072",
         :cpu => "3"
     }
