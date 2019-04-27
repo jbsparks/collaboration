@@ -301,50 +301,60 @@ We need a few prerequisits.
 #### Helm.
 
 ```bash
-sudo curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
+~$ sudo curl https://raw.githubusercontent.com/helm/helm/master/scripts/get | bash
 
-helmdel() {  kubectl -n kube-system delete deployment tiller-deploy;  kubectl delete clusterrolebinding tiller;  kubectl -n kube-system delete serviceaccount tiller;   }
+~$ elmdel() {  kubectl -n kube-system delete deployment tiller-deploy;  kubectl delete clusterrolebinding tiller;  kubectl -n kube-system delete serviceaccount tiller;   }
 
-helmins() {  kubectl -n kube-system create serviceaccount tiller;  kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller;  helm init --service-account=tiller; }
+~$ helmins() {  kubectl -n kube-system create serviceaccount tiller;  kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller;  helm init --service-account=tiller; }
 
 # Initialize helm
-helmins
-kubectl get pods --all-namespaces | grep tiller
+~$ helmins
+~$ kubectl get pods --all-namespaces | grep tiller
+kube-system   tiller-deploy-8458f6c667-kr7kg     1/1     Running   0          56s
 ```
 
 #### Kube-batch
 
 ```bash
-$ sudo bash
+~$ sudo bash
+```
 
-#### pull the offical kube-batch image from dockerhub
-docker pull kubesigs/kube-batch:v0.4
+pull the offical kube-batch image from dockerhub
+```bash
+~# docker pull kubesigs/kube-batch:v0.4
+```
 
-#### Check to see if go is installed and what the values are set to
-go env
+Check to see if go is installed and what the values are set to
+```bash
+~# go env
+```
 
-#### if not Install a newer version of go > 1.6
-wget https://dl.google.com/go/go1.12.2.linux-amd64.tar.gz
-tar -xvf go1.12.2.linux-amd64.tar.gz
-mv go /usr/local
-export GOROOT=/usr/local/go
-export PATH=$PATH:/usr/local/go/bin
-go env
-go version
-export GOPATH="/root/projects"
-mkdir -p $GOPATH
-go env
+if not Install a newer version of go > 1.6
 
-mkdir -p $GOPATH/src/github.com/kubernetes-sigs/
-cd $GOPATH/src/github.com/kubernetes-sigs/
-git clone http://github.com/kubernetes-sigs/kube-batch -b v0.4.2
+```bash
+~# wget https://dl.google.com/go/go1.12.2.linux-amd64.tar.gz
+~# tar -xvf go1.12.2.linux-amd64.tar.gz
+~# mv go /usr/local
+~# export GOROOT=/usr/local/go
+~# export PATH=$PATH:/usr/local/go/bin
+~# go env
+~# go version
+~# export GOPATH="/root/projects"
+~# mkdir -p $GOPATH
+~# go env
+```
 
-kubectl get deployments -n kube-system kube-batch
+```bash
+~# mkdir -p $GOPATH/src/github.com/kubernetes-sigs/
+~# cd $GOPATH/src/github.com/kubernetes-sigs/
+~# git clone -b v0.4.2 http://github.com/kubernetes-sigs/kube-batch
 
-kubectl get pods --all-namespaces | grep tiller
-kubectl create serviceaccount --namespace kube-system tiller
-kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+~# kubectl get deployments -n kube-system kube-batch
+
+~# kubectl get pods --all-namespaces | grep tiller
+~# kubectl create serviceaccount --namespace kube-system tiller
+~# kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+~# kubectl patch deploy --namespace kube-system tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
 
 #### Modify the parameters, cuz the VM doesn't have enough resources for kube-batch
 cd $GOPATH/src/github.com/kubernetes-sigs/kube-batch/deployment/kube-batch
@@ -379,6 +389,7 @@ Remove kube-batch if necessary
 kubectl delete  deployments kube-batch -n kube-system
 kubectl delete customresourcedefinitions podgroups.scheduling.incubator.k8s.io
 kubectl delete customresourcedefinitions queues.scheduling.incubator.k8s.io
+
 kubectl get deployments -n kube-system
 helm list
 helm delete <name from the above>
